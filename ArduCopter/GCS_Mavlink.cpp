@@ -902,6 +902,8 @@ void GCS_MAVLINK_Copter::handle_mount_message(const mavlink_message_t* msg)
 
 void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 {
+	
+  
     switch (msg->msgid) {
 
     case MAVLINK_MSG_ID_HEARTBEAT:      // MAV ID: 0
@@ -1153,6 +1155,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
     {
         copter.rangefinder.handle_msg(msg);
 #if PROXIMITY_ENABLED == ENABLED
+  	//gcs().send_text(MAV_SEVERITY_INFO,"PROXIMITY ENABLEEDDDD %u",msg->msgid);
         copter.g2.proximity.handle_msg(msg);
 #endif
         break;

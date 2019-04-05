@@ -18,6 +18,7 @@
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <GCS_MAVLink/GCS.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -32,17 +33,21 @@ AP_Proximity_MAV::AP_Proximity_MAV(AP_Proximity &_frontend,
                                    AP_Proximity::Proximity_State &_state) :
     AP_Proximity_Backend(_frontend, _state)
 {
+	 
 }
 
 // update the state of the sensor
 void AP_Proximity_MAV::update(void)
 {
+    
     // check for timeout and set health status
     if ((_last_update_ms == 0 || (AP_HAL::millis() - _last_update_ms > PROXIMITY_MAV_TIMEOUT_MS)) &&
         (_last_upward_update_ms == 0 || (AP_HAL::millis() - _last_upward_update_ms > PROXIMITY_MAV_TIMEOUT_MS))) {
         set_status(AP_Proximity::Proximity_NoData);
+	
     } else {
         set_status(AP_Proximity::Proximity_Good);
+	
     }
 }
 
@@ -59,13 +64,17 @@ bool AP_Proximity_MAV::get_upward_distance(float &distance) const
 // handle mavlink DISTANCE_SENSOR messages
 void AP_Proximity_MAV::handle_msg(mavlink_message_t *msg)
 {
+    
     if (msg->msgid == MAVLINK_MSG_ID_DISTANCE_SENSOR) {
         mavlink_distance_sensor_t packet;
         mavlink_msg_distance_sensor_decode(msg, &packet);
-
+	
+	
         // store distance to appropriate sector based on orientation field
         if (packet.orientation <= MAV_SENSOR_ROTATION_YAW_315) {
             uint8_t sector = packet.orientation;
+	     //gcs().send_text(MAV_SEVERITY_INFO, "SECTOR %u ", sector);
+	     //gcs().send_text(MAV_SEVERITY_INFO, "DISTANCE %u ", packet.current_distance);
             _angle[sector] = sector * 45;
             _distance[sector] = packet.current_distance / 100.0f;
             _distance_min = packet.min_distance / 100.0f;

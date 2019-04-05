@@ -1,6 +1,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AC_Loiter.h"
-
+#include <GCS_MAVLink/GCS.h>
+#include <cmath>
 extern const AP_HAL::HAL& hal;
 
 #define LOITER_SPEED_DEFAULT                1250.0f // default loiter speed in cm/s
@@ -10,7 +11,7 @@ extern const AP_HAL::HAL& hal;
 #define LOITER_BRAKE_JERK_DEFAULT           500.0f  // maximum jerk in cm/s/s/s in loiter mode
 #define LOITER_BRAKE_START_DELAY_DEFAULT    1.0f    // delay (in seconds) before loiter braking begins after sticks are released
 #define LOITER_VEL_CORRECTION_MAX           200.0f  // max speed used to correct position errors in loiter
-#define LOITER_POS_CORRECTION_MAX           200.0f  // max position error in loiter
+#define LOITER_POS_CORRECTION_MAX           100.0f  // max position error in loiter
 #define LOITER_ACTIVE_TIMEOUT_MS            200     // loiter controller is considered active if it has been called within the past 200ms (0.2 seconds)
 
 const AP_Param::GroupInfo AC_Loiter::var_info[] = {
@@ -272,7 +273,7 @@ void AC_Loiter::calc_desired_velocity(float nav_dt)
         // we could add a expo function here to fine tune it
 
         // calculate a drag acceleration based on the desired speed.
-        float drag_decel = pilot_acceleration_max*desired_speed/gnd_speed_limit_cms;
+        float drag_decel = pilot_acceleration_max*pow(desired_speed/gnd_speed_limit_cms,2);
 
         // calculate a braking acceleration if sticks are at zero
         float loiter_brake_accel = 0.0f;
@@ -306,6 +307,8 @@ void AC_Loiter::calc_desired_velocity(float nav_dt)
     // Limit the velocity to prevent fence violations
     // TODO: We need to also limit the _desired_accel
     if (_avoid != nullptr) {
+	//gcs().send_text(MAV_SEVERITY_INFO, "VELLLLLLLLL XXXX %f", desired_vel.x);
+	//gcs().send_text(MAV_SEVERITY_INFO, "VELLLLLLLLL YYY %f", desired_vel.y);
         _avoid->adjust_velocity(_pos_control.get_pos_xy_p().kP(), _accel_cmss, desired_vel, nav_dt);
     }
 

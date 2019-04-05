@@ -1,5 +1,5 @@
 #include "AC_Avoid.h"
-
+#include <GCS_MAVLink/GCS.h>
 #if APM_BUILD_TYPE(APM_BUILD_APMrover2)
  # define AP_AVOID_BEHAVE_DEFAULT AC_Avoid::BehaviourType::BEHAVIOR_STOP
 #else
@@ -57,9 +57,10 @@ AC_Avoid::AC_Avoid(const AP_AHRS& ahrs, const AC_Fence& fence, const AP_Proximit
       _proximity(proximity),
       _beacon(beacon)
 {
+     
     _singleton = this;
-
     AP_Param::setup_object_defaults(this, var_info);
+    
 }
 
 void AC_Avoid::adjust_velocity(float kP, float accel_cmss, Vector2f &desired_vel_cms, float dt)
@@ -68,7 +69,7 @@ void AC_Avoid::adjust_velocity(float kP, float accel_cmss, Vector2f &desired_vel
     if (_enabled == AC_AVOID_DISABLED) {
         return;
     }
-
+    
     // limit acceleration
     const float accel_cmss_limited = MIN(accel_cmss, AC_AVOID_ACCEL_CMSS_MAX);
 
@@ -82,6 +83,7 @@ void AC_Avoid::adjust_velocity(float kP, float accel_cmss, Vector2f &desired_vel
     }
 
     if ((_enabled & AC_AVOID_USE_PROXIMITY_SENSOR) > 0 && _proximity_enabled) {
+	
         adjust_velocity_proximity(kP, accel_cmss_limited, desired_vel_cms, dt);
     }
 }
@@ -382,16 +384,19 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector2f &d
 {
     // exit immediately if proximity sensor is not present
     if (_proximity.get_status() != AP_Proximity::Proximity_Good) {
+	//gcs().send_text(MAV_SEVERITY_INFO, "NOOOOOOOOOOOOOOOOO");
         return;
     }
 
     // exit immediately if no desired velocity
     if (desired_vel_cms.is_zero()) {
+        //gcs().send_text(MAV_SEVERITY_INFO, "NOOOOOOOOOOOOOOOOO VELLLLLLLLL");
         return;
     }
 
     // get boundary from proximity sensor
     uint16_t num_points;
+    
     const Vector2f *boundary = _proximity.get_boundary_points(num_points);
     adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, false, _margin, dt);
 }
@@ -403,6 +408,7 @@ void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &des
 {
     // exit if there are no points
     if (boundary == nullptr || num_points == 0) {
+        
         return;
     }
 
@@ -415,6 +421,7 @@ void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &des
             return;
         }
         position_xy = position_xy * 100.0f;  // m to cm
+
     }
 
     if (_fence.boundary_breached(position_xy, num_points, boundary)) {
@@ -449,6 +456,7 @@ void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &des
             Vector2f limit_direction = Vector2f::closest_point(position_xy, start, end) - position_xy;
             // distance to closest point
             const float limit_distance_cm = limit_direction.length();
+	
             if (!is_zero(limit_distance_cm)) {
                 // We are strictly inside the given edge.
                 // Adjust velocity to not violate this edge.
@@ -462,14 +470,23 @@ void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &des
         } else {
             // find intersection with line segment
             Vector2f intersection;
+	    //gcs().send_text(MAV_SEVERITY_INFO, "BEHAVE STOP %f", position_xy.x);
+	    //gcs().send_text(MAV_SEVERITY_INFO, "BEHAVE STOP Y %f", position_xy.y);
+            //gcs().send_text(MAV_SEVERITY_INFO, "STOP MARGIN X %f", stopping_point_plus_margin.x);
+	    //gcs().send_text(MAV_SEVERITY_INFO, "STOP MARGIN Y %f", stopping_point_plus_margin.y);
             if (Vector2f::segment_intersection(position_xy, stopping_point_plus_margin, start, end, intersection)) {
                 // vector from current position to point on current edge
                 Vector2f limit_direction = intersection - position_xy;
                 const float limit_distance_cm = limit_direction.length();
+		//gcs().send_text(MAV_SEVERITY_INFO, "LIMIT DISTANCE %f", limit_distance_cm);
                 if (!is_zero(limit_distance_cm)) {
+		    
                     if (limit_distance_cm <= margin_cm) {
+			gcs().send_text(MAV_SEVERITY_INFO, "LIMIT DISTANCE %f", limit_distance_cm);
                         // we are within the margin so stop vehicle
                         safe_vel.zero();
+			//gcs().send_text(MAV_SEVERITY_INFO, "SAFE VEL X %f", safe_vel.x);
+			//gcs().send_text(MAV_SEVERITY_INFO, "SAFE VEL Y %f", safe_vel.y);
                     } else {
                         // vehicle inside the given edge, adjust velocity to not violate this edge
                         limit_direction /= limit_distance_cm;
@@ -486,11 +503,14 @@ void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &des
 
     // set modified desired velocity vector
     if (earth_frame) {
+	//gcs().send_text(MAV_SEVERITY_INFO, "EARTH FRAMMMEEEE");
         desired_vel_cms = safe_vel;
     } else {
+        
         // if points were in body-frame, rotate resulting vector back to earth-frame
         desired_vel_cms.x = safe_vel.x * _ahrs.cos_yaw() - safe_vel.y * _ahrs.sin_yaw();
         desired_vel_cms.y = safe_vel.x * _ahrs.sin_yaw() + safe_vel.y * _ahrs.cos_yaw();
+	//gcs().send_text(MAV_SEVERITY_INFO, "NOT EARTH FRAMMMEEEE %f", desired_vel_cms.y);
     }
 }
 

@@ -22,7 +22,7 @@
 #include "AP_Proximity_MAV.h"
 #include "AP_Proximity_SITL.h"
 #include "AP_Proximity_MorseSITL.h"
-
+#include <GCS_MAVLink/GCS.h>
 extern const AP_HAL::HAL &hal;
 
 // table of user settable parameters
@@ -192,13 +192,16 @@ AP_Proximity::AP_Proximity(AP_SerialManager &_serial_manager) :
 // we don't allow for hot-plugging of sensors (i.e. reboot required)
 void AP_Proximity::init(void)
 {
+   
     if (num_instances != 0) {
         // init called a 2nd time?
         return;
     }
     for (uint8_t i=0; i<PROXIMITY_MAX_INSTANCES; i++) {
         detect_instance(i);
+	gcs().send_text(MAV_SEVERITY_INFO, "HANDLE MESSAGEGGGGG %u",i);
         if (drivers[i] != nullptr) {
+	    
             // we loaded a driver for this instance, so it must be
             // present (although it may not be healthy)
             num_instances = i+1;
@@ -270,6 +273,7 @@ AP_Proximity::Proximity_Status AP_Proximity::get_status() const
 // handle mavlink DISTANCE_SENSOR messages
 void AP_Proximity::handle_msg(mavlink_message_t *msg)
 {
+    
     for (uint8_t i=0; i<num_instances; i++) {
         if ((drivers[i] != nullptr) && (_type[i] != Proximity_Type_None)) {
             drivers[i]->handle_msg(msg);
@@ -280,6 +284,7 @@ void AP_Proximity::handle_msg(mavlink_message_t *msg)
 //  detect if an instance of a proximity sensor is connected.
 void AP_Proximity::detect_instance(uint8_t instance)
 {
+   
     uint8_t type = _type[instance];
     if (type == Proximity_Type_SF40C) {
         if (AP_Proximity_LightWareSF40C::detect(serial_manager)) {
@@ -296,6 +301,7 @@ void AP_Proximity::detect_instance(uint8_t instance)
         }
     }
     if (type == Proximity_Type_MAV) {
+       
         state[instance].instance = instance;
         drivers[instance] = new AP_Proximity_MAV(*this, state[instance]);
         return;

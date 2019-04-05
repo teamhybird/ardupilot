@@ -17,7 +17,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Proximity.h"
 #include "AP_Proximity_Backend.h"
-
+#include <GCS_MAVLink/GCS.h>
 /*
   base class constructor. 
   This incorporates initialisation as well.
@@ -179,6 +179,8 @@ void AP_Proximity_Backend::init_boundary()
 //   the boundary point is set to the shortest distance found in the two adjacent sectors, this is a conservative boundary around the vehicle
 void AP_Proximity_Backend::update_boundary_for_sector(uint8_t sector)
 {
+    //gcs().send_text(MAV_SEVERITY_INFO, "SECTOR %u ", sector);
+    //gcs().send_text(MAV_SEVERITY_INFO, " MAX SECTOR %u ", _num_sectors);
     // sanity check
     if (sector >= _num_sectors) {
         return;
